@@ -81,6 +81,19 @@ window.__ModuleLoader__.load({
 			skillsParsed: "已解析",
 			skillsBroken: "frontmatter 缺失",
 			skillsBytes: "字节",
+			skillAddUser: "新增用户级 skill",
+			skillAddUserHint: "把自定义 SKILL.md 写到 $DSH_HOME/skills/<id>/,DSH 重启(或 skill-filesystem 监听器)后会自动发现。",
+			skillFieldId: "id (kebab-case)",
+			skillFieldIdPlaceholder: "my-custom-skill",
+			skillFieldName: "显示名称",
+			skillFieldNamePlaceholder: "My custom skill",
+			skillFieldDescription: "描述",
+			skillFieldDescriptionPlaceholder: "这一行告诉模型什么时候该用这个 skill",
+			skillFieldBody: "正文 (SKILL.md body)",
+			skillFieldBodyPlaceholder: "把这里当成 system prompt 写。SKILL 路径、参数、错误处理都在里面。",
+			skillSubmit: "提交",
+			skillAddOk: "已写入。重启 dsh web 或等监听器捡起新文件后,这个 skill 就会出现在模型上下文里。",
+			skillValidationErrors: "字段校验失败",
 			installTitle: "安装 vcli",
 			installFromCrates: "从 crates.io 安装(推荐)",
 			installFromCratesCommand: "cargo install virtuoso-cli",
@@ -151,6 +164,19 @@ window.__ModuleLoader__.load({
 			skillsParsed: "parsed",
 			skillsBroken: "missing frontmatter",
 			skillsBytes: "bytes",
+			skillAddUser: "Add user-level skill",
+			skillAddUserHint: "Write a SKILL.md to $DSH_HOME/skills/<id>/. DSH picks it up on restart (or via the skill-filesystem watcher).",
+			skillFieldId: "id (kebab-case)",
+			skillFieldIdPlaceholder: "my-custom-skill",
+			skillFieldName: "display name",
+			skillFieldNamePlaceholder: "My custom skill",
+			skillFieldDescription: "description",
+			skillFieldDescriptionPlaceholder: "One line telling the model when to use this skill",
+			skillFieldBody: "body (SKILL.md content)",
+			skillFieldBodyPlaceholder: "Treat as a system prompt. SKILL paths, args, error handling go here.",
+			skillSubmit: "Submit",
+			skillAddOk: "Written. Restart dsh web or wait for the watcher to pick up the new file; the skill then appears in the model context.",
+			skillValidationErrors: "Validation errors",
 			installTitle: "Install vcli",
 			installFromCrates: "Install from crates.io (recommended)",
 			installFromCratesCommand: "cargo install virtuoso-cli",
@@ -648,6 +674,62 @@ window.__ModuleLoader__.load({
 		}
 		function SkillsTab(props) {
 			const { t, status } = props;
+			const [adding, setAdding] = (0, react.useState)(false);
+			const [draftId, setDraftId] = (0, react.useState)("");
+			const [draftName, setDraftName] = (0, react.useState)("");
+			const [draftDescription, setDraftDescription] = (0, react.useState)("");
+			const [draftBody, setDraftBody] = (0, react.useState)("");
+			const [submitState, setSubmitState] = (0, react.useState)({ kind: "idle" });
+			const reset = (0, react.useCallback)(() => {
+				setDraftId("");
+				setDraftName("");
+				setDraftDescription("");
+				setDraftBody("");
+				setSubmitState({ kind: "idle" });
+			}, []);
+			const submit = (0, react.useCallback)(async () => {
+				setSubmitState({ kind: "submitting" });
+				try {
+					const r = await fetch("/dsh-virtuoso/skills/add", {
+						method: "POST",
+						credentials: "same-origin",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							id: draftId,
+							name: draftName,
+							description: draftDescription,
+							body: draftBody
+						})
+					});
+					const payload = await r.json();
+					if (r.status === 200 && payload.ok === true) setSubmitState({
+						kind: "ok",
+						path: payload.path,
+						id: payload.id,
+						note: payload.note
+					});
+					else if (r.status === 400 && payload.errors !== void 0) setSubmitState({
+						kind: "validation",
+						errors: payload.errors
+					});
+					else setSubmitState({
+						kind: "error",
+						code: payload.error ?? `HTTP ${r.status}`,
+						reason: payload.reason
+					});
+				} catch (err) {
+					setSubmitState({
+						kind: "error",
+						code: "network",
+						reason: err.message
+					});
+				}
+			}, [
+				draftId,
+				draftName,
+				draftDescription,
+				draftBody
+			]);
 			if (status === null) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Panel, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }) });
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Panel, { children: [
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
@@ -667,6 +749,173 @@ window.__ModuleLoader__.load({
 						brokenLabel: t("skillsBroken"),
 						bytesLabel: t("skillsBytes")
 					}, s.id)), status.skills.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("empty") })]
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					style: {
+						marginTop: 16,
+						paddingTop: 12,
+						borderTop: "1px dashed var(--dsh-color-divider, rgba(127,127,127,0.15))"
+					},
+					children: [!adding && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "ghost",
+						onClick: () => {
+							setAdding(true);
+							setSubmitState({ kind: "idle" });
+						},
+						icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 }),
+						children: t("skillAddUser")
+					}), adding && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: {
+							display: "flex",
+							flexDirection: "column",
+							gap: 8
+						},
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
+								style: sectionHeadingStyle,
+								children: t("skillAddUser")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("skillAddUserHint") }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "flex",
+									flexDirection: "column",
+									gap: 2
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: fieldLabelStyle,
+									children: t("skillFieldId")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									style: inputStyle,
+									value: draftId,
+									onChange: (e) => setDraftId(e.target.value),
+									placeholder: t("skillFieldIdPlaceholder")
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "flex",
+									flexDirection: "column",
+									gap: 2
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: fieldLabelStyle,
+									children: t("skillFieldName")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									style: inputStyle,
+									value: draftName,
+									onChange: (e) => setDraftName(e.target.value),
+									placeholder: t("skillFieldNamePlaceholder")
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "flex",
+									flexDirection: "column",
+									gap: 2
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: fieldLabelStyle,
+									children: t("skillFieldDescription")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+									style: {
+										...inputStyle,
+										minHeight: 48
+									},
+									value: draftDescription,
+									onChange: (e) => setDraftDescription(e.target.value),
+									placeholder: t("skillFieldDescriptionPlaceholder")
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "flex",
+									flexDirection: "column",
+									gap: 2
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: fieldLabelStyle,
+									children: t("skillFieldBody")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+									style: {
+										...inputStyle,
+										minHeight: 120,
+										fontFamily: "ui-monospace, SFMono-Regular, monospace",
+										fontSize: 12
+									},
+									value: draftBody,
+									onChange: (e) => setDraftBody(e.target.value),
+									placeholder: t("skillFieldBodyPlaceholder")
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "flex",
+									gap: 8
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+									variant: "primary",
+									disabled: submitState.kind === "submitting",
+									onClick: submit,
+									icon: submitState.kind === "submitting" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLoadingOutline16, { size: 14 }) : void 0,
+									children: submitState.kind === "submitting" ? t("loading") : t("skillSubmit")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+									variant: "ghost",
+									onClick: reset,
+									disabled: submitState.kind === "submitting",
+									children: t("cancel")
+								})]
+							}),
+							submitState.kind === "ok" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: submitOkStyle,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16, { size: 14 }),
+									" ",
+									t("skillAddOk"),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										style: {
+											marginTop: 4,
+											fontFamily: "ui-monospace, SFMono-Regular, monospace",
+											fontSize: 11
+										},
+										children: submitState.path
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										style: { marginTop: 4 },
+										children: submitState.note
+									})
+								]
+							}),
+							submitState.kind === "validation" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: submitErrStyle,
+								children: [
+									t("fail"),
+									": ",
+									t("skillValidationErrors"),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+										style: {
+											margin: "4px 0 0",
+											paddingLeft: 16
+										},
+										children: submitState.errors.map((e, i) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [
+											e.field,
+											": ",
+											e.message
+										] }, i))
+									})
+								]
+							}),
+							submitState.kind === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: submitErrStyle,
+								children: [
+									t("fail"),
+									": ",
+									submitState.code,
+									submitState.reason !== void 0 ? ` — ${submitState.reason}` : ""
+								]
+							})
+						]
+					})]
 				})
 			] });
 		}
@@ -920,6 +1169,35 @@ window.__ModuleLoader__.load({
 			...codeBlockStyle,
 			whiteSpace: "pre-wrap",
 			marginTop: 8
+		};
+		const inputStyle = {
+			padding: "6px 8px",
+			border: "1px solid var(--dsh-color-divider, rgba(127,127,127,0.3))",
+			borderRadius: 4,
+			background: "var(--dsh-color-input-bg, transparent)",
+			color: "var(--dsh-color-text-primary, #fff)",
+			fontFamily: "inherit",
+			fontSize: 13,
+			resize: "vertical"
+		};
+		const fieldLabelStyle = {
+			fontSize: 12,
+			color: "var(--dsh-color-text-secondary, #888)",
+			fontWeight: 600
+		};
+		const submitOkStyle = {
+			padding: 8,
+			borderRadius: 4,
+			background: "var(--dsh-color-success-bg, rgba(80,180,120,0.1))",
+			color: "var(--dsh-color-text-primary, #fff)",
+			fontSize: 13
+		};
+		const submitErrStyle = {
+			padding: 8,
+			borderRadius: 4,
+			background: "var(--dsh-color-warning-bg, rgba(220,150,80,0.1))",
+			color: "var(--dsh-color-text-primary, #fff)",
+			fontSize: 13
 		};
 		//#endregion
 		//#region src/client/SettingsCard.tsx

@@ -12,6 +12,7 @@
  *   POST /dsh-virtuoso/tunnel/stop      — call `vcli tunnel stop` (remote mode)
  *                                          or no-op (local mode)
  *   GET  /dsh-virtuoso/skills           — list bundled skill names + descriptions
+ *   POST /dsh-virtuoso/skills/add       — write a new SKILL.md to $DSH_HOME/skills/<id>
  *
  * All post routes accept same-origin only and same-rule: same as dsh-market.
  * Every route returns JSON; the client UI consumes them via fetch.
@@ -19,10 +20,18 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { readVirtuosoCliConfig } from './config.ts'
 import { readBundledSkillSummaries } from './skills.ts'
+import {
+  buildSkillMarkdown,
+  resolveUserSkillPath,
+  validateUserSkillDraft,
+  type UserSkillDraft,
+} from './user-skill.ts'
 import { callVcli } from './vcli.ts'
-import { sendJson, sameOrigin } from './http.ts'
+import { sendJson, sameOrigin, readJsonBody } from './http.ts'
 import { version } from './version.ts'
 import type { VirtuosoCliConfig } from './config.ts'
 
@@ -332,6 +341,75 @@ export function mountVirtuosoRoutes(host: VirtuosoHost, resolved: VirtuosoConfig
     path: '/dsh-virtuoso/skills',
     handler: async (_req, res) => {
       sendJson(res, 200, { skills: readBundledSkillSummaries() })
+    },
+  }))
+
+  /**
+   * POST /dsh-virtuoso/skills/add
+   *
+   * Write a user-authored SKILL.md to `$DSH_HOME/skills/<id>/SKILL.md`.
+   * The file is auto-discovered by `@deepseek-ai/dsh-skill-filesystem`
+   * on the next reload (the provider's `watch: true` default picks up
+   * new files in the user skill root).
+   *
+   * Request body: `{ id, name, description, body, allowedTools? }`.
+   * - `id` must match the kebab-case grammar (matches DSH's
+   *   `isSkillName`); failing this is a 400.
+   * - `name`, `description`, `body` must be non-empty.
+   * - `allowedTools` defaults to the standard vcli gate if omitted
+   *   (Bash star vcli, Bash star virtuoso, Read, Write, Edit).
+   *
+   * Refuses to clobber: returns 409 if the target SKILL.md already
+   * exists. The user can manually edit the file to update.
+   *
+   * Response (200): `{ ok: true, path: string, id: string, note: string }`.
+   * Response (400): `{ ok: false, errors: UserSkillValidationError[] }`.
+   * Response (409): `{ ok: false, error: 'already-exists', path: string }`.
+   * Response (500): `{ ok: false, error: 'write-failed', reason: string }`.
+   */
+  disposers.push(host.webServer.register({
+    kind: 'exact',
+    path: '/dsh-virtuoso/skills/add',
+    handler: async (req, res) => {
+      if (!sameOrigin(req)) return sendJson(res, 403, { ok: false, error: 'forbidden' })
+      const parsed = await readJsonBody(req)
+      if (!parsed.ok) return sendJson(res, 400, { ok: false, error: 'invalid-body', reason: parsed.error })
+      const draft = parsed.value as Partial<UserSkillDraft>
+      const errors = validateUserSkillDraft({
+        id: typeof draft.id === 'string' ? draft.id : '',
+        name: typeof draft.name === 'string' ? draft.name : '',
+        description: typeof draft.description === 'string' ? draft.description : '',
+        body: typeof draft.body === 'string' ? draft.body : '',
+        allowedTools: typeof draft.allowedTools === 'string' ? draft.allowedTools : undefined,
+      })
+      if (errors.length > 0) {
+        sendJson(res, 400, { ok: false, errors })
+        return
+      }
+      const targetPath = resolveUserSkillPath(draft.id as string)
+      if (existsSync(targetPath)) {
+        sendJson(res, 409, { ok: false, error: 'already-exists', path: targetPath })
+        return
+      }
+      try {
+        mkdirSync(dirname(targetPath), { recursive: true })
+        writeFileSync(targetPath, buildSkillMarkdown({
+          id: draft.id as string,
+          name: draft.name as string,
+          description: draft.description as string,
+          body: draft.body as string,
+          allowedTools: draft.allowedTools,
+        }), 'utf8')
+      } catch (err) {
+        sendJson(res, 500, { ok: false, error: 'write-failed', reason: (err as Error).message })
+        return
+      }
+      sendJson(res, 200, {
+        ok: true,
+        path: targetPath,
+        id: draft.id,
+        note: 'SKILL.md written. Reload dsh web (or wait for the skill-filesystem watcher) to pick it up.',
+      })
     },
   }))
 

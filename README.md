@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-virtuoso"><img alt="npm version" src="https://img.shields.io/npm/v/dsh-virtuoso?color=cb3837&logo=npm"></a>
   <a href="https://github.com/deanyou/dsh-virtuoso/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/dsh-virtuoso"></a>
-  <a href="https://github.com/deanyou/dsh-virtuoso/actions"><img alt="tests" src="https://img.shields.io/badge/tests-72%20passing-brightgreen"></a>
+  <a href="https://github.com/deanyou/dsh-virtuoso/actions"><img alt="tests" src="https://img.shields.io/badge/tests-95%20passing-brightgreen"></a>
 </p>
 
 <p align="center">
@@ -47,10 +47,18 @@ This is the **first npm release** of dsh-virtuoso. Highlights:
   `allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit`
   gate on every skill that ships without one. Five previously-ungated
   skills were patched in place.
-- **Tests** — 72 unit tests across 6 files (config, vcli, http, routes,
-  skills, redact-paths). `npm test` runs them in ~750 ms.
+- **Tests** — 95 unit tests across 7 files (config, vcli, http, routes,
+  skills, redact-paths, user-skill). `npm test` runs them in ~750 ms.
 - **Published on npm** — `dsh plugin --profile web add dsh-virtuoso`
   installs from the registry; no build step, no `prepare` authorization.
+- **Add user-level skill** — `POST /dsh-virtuoso/skills/add` writes a
+  SKILL.md into `$DSH_HOME/skills/<id>/` from the panel. The skill is
+  auto-discovered on the next dsh restart (or via the inotify watcher).
+  Defaults to the standard vcli `allowed-tools:` gate; the file is yours,
+  not the plugin's. (Disabling a bundled skill is **not** exposed by
+  the panel — DSH's `SkillRegistry` has no public unregister-by-name
+  API. Workaround: edit the SKILL.md to add
+  `disable-model-invocation: true`.)
 
 ## Install
 
@@ -156,6 +164,14 @@ if the **Settings → Virtuoso** entry never appears, that is usually why.
 - **Skill listing** — a third tab in the panel mirrors `bundled-skill/` to the
   user with description preview and size, so the model selection screen and the
   agent's `Bash`-allowed skill set stay auditable in one place.
+- **Add user-level skill** — same tab has an **Add user-level skill** form that
+  writes a SKILL.md into `$DSH_HOME/skills/<id>/`. The DSH `skill-filesystem`
+  provider auto-discovers it on the next reload (or via the inotify watcher).
+  Defaults to the standard vcli `allowed-tools:` gate. Survives plugin
+  uninstall — your skill, your filesystem. *(Disabling a bundled skill is
+  not exposed by the panel: DSH's `SkillRegistry` has no public
+  unregister-by-name API. If you need to suppress a bundled skill, edit
+  `bundled-skill/<id>/SKILL.md` to set `disable-model-invocation: true`.)*
 - **Install commands** — a fourth tab pastes the `cargo install virtuoso-cli`
   commands and the SKILL bridge `load(...)` line into your clipboard, with the
   exact wording virtuoso-cli's `ramic_bridge.il` accepts.
@@ -200,6 +216,7 @@ if the **Settings → Virtuoso** entry never appears, that is usually why.
    - `POST /dsh-virtuoso/tunnel/start` — calls `vcli tunnel start`, or short-circuits to a `vcli session list` probe in local mode
    - `POST /dsh-virtuoso/tunnel/stop` — calls `vcli tunnel stop`, or no-ops in local mode
    - `GET  /dsh-virtuoso/skills` — bundled-skill metadata
+   - `POST /dsh-virtuoso/skills/add` — write a SKILL.md to `$DSH_HOME/skills/<id>/`
    - `GET  /dsh-virtuoso/loader` — the DSH plugin stack
    The host half shells out to `vcli` once per click and returns the discriminated
    `{ ok, stdout, stderr, code, reason, durationMs, mode?, note? }` payload.
@@ -269,7 +286,7 @@ Both halves type-check against the runtime types DSH ships under
 
 ### Tests
 
-`npm test` runs 72 unit tests across 6 files:
+`npm test` runs 95 unit tests across 7 files:
 
 - `tests/config.test.ts` (22) — `isRemote` derivation, numeric coercion, binary-path cache
 - `tests/vcli.test.ts` (9) — `callVcli` branches (missing/timeout/exit/spawn-error) and array-form spawn
@@ -277,6 +294,7 @@ Both halves type-check against the runtime types DSH ships under
 - `tests/routes.test.ts` (6) — **the local-mode tunnel/start short-circuit** (regression test for the empty-hostname SSH error)
 - `tests/skills.test.ts` (5) — bundled-skill listing invariants
 - `tests/redact-paths.test.ts` (15) — path-redaction helper
+- `tests/user-skill.test.ts` (23) — `validateUserSkillDraft`, `buildSkillMarkdown`, `resolveDshSkillsRoot` / `resolveUserSkillPath`
 
 Watch mode: `npm run test:watch`.
 

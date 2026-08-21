@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-virtuoso"><img alt="npm 版本" src="https://img.shields.io/npm/v/dsh-virtuoso?color=cb3837&logo=npm"></a>
   <a href="https://github.com/deanyou/dsh-virtuoso/blob/main/LICENSE.md"><img alt="license" src="https://img.shields.io/npm/l/dsh-virtuoso"></a>
-  <a href="https://github.com/deanyou/dsh-virtuoso/actions"><img alt="tests" src="https://img.shields.io/badge/tests-72%20passing-brightgreen"></a>
+  <a href="https://github.com/deanyou/dsh-virtuoso/actions"><img alt="tests" src="https://img.shields.io/badge/tests-95%20passing-brightgreen"></a>
 </p>
 
 <p align="center">
@@ -44,9 +44,16 @@
   `allowed-tools:` 行的 skill 插入标准门
   (`Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit`)。原本未加门的
   5 个 skill 已经在仓里直接补上。
-- **测试** —— 72 个单元测试,跨 6 个文件。`npm test` 跑约 750 ms。
+- **测试** —— 95 个单元测试,跨 7 个文件。`npm test` 跑约 750 ms。
 - **npm 上架** —— `dsh plugin --profile web add dsh-virtuoso`
   从注册表安装;不需要 build,不需要为 `prepare` 授权。
+- **新增用户级 skill** —— `POST /dsh-virtuoso/skills/add` 把 SKILL.md
+  写到 `$DSH_HOME/skills/<id>/`,DSH 下次重启(或 inotify 监听器)
+  自动发现。`allowed-tools:` 默认标准 vcli 门。文件归用户,归插件所在
+  的 npm 包。
+  *(面板不暴露「禁用 bundled skill」入口:DSH `SkillRegistry` 没有公开
+  的按名反注册 API。需要屏蔽某个 bundled skill 时,可编辑
+  `bundled-skill/<id>/SKILL.md` 加 `disable-model-invocation: true`。)*
 
 ## 安装
 
@@ -135,6 +142,13 @@ dsh web                      # 重启让新 bundle 生效
   留面板等 daemon 重启时开。
 - **Skill 清单** —— 面板的第三个 tab 镜像 `bundled-skill/`,带描述预览与字节数,
   让模型侧的 skill 列表和 agent 实际能调的工具集保持一处可审计。
+- **新增用户级 skill** —— 同一个 tab 上有**新增用户级 skill** 表单,把
+  SKILL.md 写入 `$DSH_HOME/skills/<id>/`。DSH 的 `skill-filesystem` provider
+  在下次重启(或通过 inotify 监听器)时自动发现。`allowed-tools:` 默认
+  为标准 vcli 门。卸载插件后用户的 skill 依然存在 —— **你的 skill,你的磁盘**。
+  *(面板不提供禁用 bundled skill 的入口:DSH 的 `SkillRegistry` 没有公开
+  按名反注册的方法。若需要屏蔽某个 bundled skill,可编辑
+  `bundled-skill/<id>/SKILL.md` 加上 `disable-model-invocation: true`。)*
 - **安装命令** —— 第四个 tab 把 `cargo install virtuoso-cli` 与 SKILL bridge 的
   `load(...)` 行送进剪贴板,字符与 virtuoso-cli's `ramic_bridge.il` 完全一致。
 - **插件配置卡片** —— dsh 0.1.0-rc.7+,在 **Settings → Plugins → Plugin configuration**
@@ -176,6 +190,7 @@ dsh web                      # 重启让新 bundle 生效
    - `POST /dsh-virtuoso/tunnel/start` — 调 `vcli tunnel start`,本地模式短路为 `vcli session list` 探测
    - `POST /dsh-virtuoso/tunnel/stop` — 调 `vcli tunnel stop`,本地模式 no-op
    - `GET  /dsh-virtuoso/skills` — bundled-skill 元数据
+   - `POST /dsh-virtuoso/skills/add` — 写一个 SKILL.md 到 `$DSH_HOME/skills/<id>/`
    - `GET  /dsh-virtuoso/loader` — DSH 插件栈
    host half 每次点击调用 `vcli` 一次,返回统一形状
    `{ ok, stdout, stderr, code, reason, durationMs, mode?, note? }`。
@@ -235,7 +250,7 @@ client half 跑在 dsh web bundle loader(浏览器 + 闭包工厂)。
 
 ### 测试
 
-`npm test` 跑 72 个单元测试,跨 6 个文件:
+`npm test` 跑 95 个单元测试,跨 7 个文件:
 
 - `tests/config.test.ts` (22) — `isRemote` 派生、数值强转、二进制路径缓存
 - `tests/vcli.test.ts` (9) — `callVcli` 各分支(missing/timeout/exit/spawn-error)以及数组形式 spawn
@@ -243,6 +258,7 @@ client half 跑在 dsh web bundle loader(浏览器 + 闭包工厂)。
 - `tests/routes.test.ts` (6) — **本地模式 tunnel/start 短路**(空 hostname SSH 错误的回归测试)
 - `tests/skills.test.ts` (5) — bundled-skill 列表不变式
 - `tests/redact-paths.test.ts` (15) — 路径脱敏 helper
+- `tests/user-skill.test.ts` (23) — `validateUserSkillDraft`、`buildSkillMarkdown`、`resolveDshSkillsRoot` / `resolveUserSkillPath`
 
 监听模式:`npm run test:watch`。
 

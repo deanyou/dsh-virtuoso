@@ -10,6 +10,7 @@ import {
   IconCheckOutline16,
   IconCopyOutline16,
   IconLoadingOutline16,
+  IconPlusOutline16,
   IconRefreshOutline14,
   IconRefreshOutline16,
   IconWarningOutline16,
@@ -400,6 +401,71 @@ function StatusTab(props: {
 
 function SkillsTab(props: { t: Translate; status: VirtuosoStatus | null }) {
   const { t, status } = props
+  const [adding, setAdding] = useState(false)
+  const [draftId, setDraftId] = useState('')
+  const [draftName, setDraftName] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
+  const [draftBody, setDraftBody] = useState('')
+  const [submitState, setSubmitState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'submitting' }
+    | { kind: 'ok'; path: string; id: string; note: string }
+    | { kind: 'validation'; errors: Array<{ field: string; message: string }> }
+    | { kind: 'error'; code: string; reason?: string }
+  >({ kind: 'idle' })
+
+  const reset = useCallback(() => {
+    setDraftId('')
+    setDraftName('')
+    setDraftDescription('')
+    setDraftBody('')
+    setSubmitState({ kind: 'idle' })
+  }, [])
+
+  const submit = useCallback(async () => {
+    setSubmitState({ kind: 'submitting' })
+    try {
+      const r = await fetch('/dsh-virtuoso/skills/add', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: draftId,
+          name: draftName,
+          description: draftDescription,
+          body: draftBody,
+        }),
+      })
+      const payload = (await r.json()) as {
+        ok: boolean
+        errors?: Array<{ field: string; message: string }>
+        path?: string
+        id?: string
+        note?: string
+        error?: string
+        reason?: string
+      }
+      if (r.status === 200 && payload.ok === true) {
+        setSubmitState({
+          kind: 'ok',
+          path: payload.path as string,
+          id: payload.id as string,
+          note: payload.note as string,
+        })
+      } else if (r.status === 400 && payload.errors !== undefined) {
+        setSubmitState({ kind: 'validation', errors: payload.errors })
+      } else {
+        setSubmitState({
+          kind: 'error',
+          code: payload.error ?? `HTTP ${r.status}`,
+          reason: payload.reason,
+        })
+      }
+    } catch (err) {
+      setSubmitState({ kind: 'error', code: 'network', reason: (err as Error).message })
+    }
+  }, [draftId, draftName, draftDescription, draftBody])
+
   if (status === null) return <Panel><StateDot state="ongoing" /></Panel>
   return (
     <Panel>
@@ -408,6 +474,63 @@ function SkillsTab(props: { t: Translate; status: VirtuosoStatus | null }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {status.skills.map((s) => <SkillRow key={s.id} skill={s} parsedLabel={t('skillsParsed')} brokenLabel={t('skillsBroken')} bytesLabel={t('skillsBytes')} />)}
         {status.skills.length === 0 && <Hint text={t('empty')} />}
+      </div>
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px dashed var(--dsh-color-divider, rgba(127,127,127,0.15))' }}>
+        {!adding && (
+          <Button variant="ghost" onClick={() => { setAdding(true); setSubmitState({ kind: 'idle' }) }} icon={<IconPlusOutline16 size={14} />}>
+            {t('skillAddUser')}
+          </Button>
+        )}
+        {adding && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <h4 style={sectionHeadingStyle}>{t('skillAddUser')}</h4>
+            <Hint text={t('skillAddUserHint')} />
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={fieldLabelStyle}>{t('skillFieldId')}</span>
+              <input style={inputStyle} value={draftId} onChange={(e) => setDraftId(e.target.value)} placeholder={t('skillFieldIdPlaceholder')} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={fieldLabelStyle}>{t('skillFieldName')}</span>
+              <input style={inputStyle} value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder={t('skillFieldNamePlaceholder')} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={fieldLabelStyle}>{t('skillFieldDescription')}</span>
+              <textarea style={{ ...inputStyle, minHeight: 48 }} value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} placeholder={t('skillFieldDescriptionPlaceholder')} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={fieldLabelStyle}>{t('skillFieldBody')}</span>
+              <textarea style={{ ...inputStyle, minHeight: 120, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 12 }} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder={t('skillFieldBodyPlaceholder')} />
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" disabled={submitState.kind === 'submitting'} onClick={submit} icon={submitState.kind === 'submitting' ? <IconLoadingOutline16 size={14} /> : undefined}>
+                {submitState.kind === 'submitting' ? t('loading') : t('skillSubmit')}
+              </Button>
+              <Button variant="ghost" onClick={reset} disabled={submitState.kind === 'submitting'}>
+                {t('cancel')}
+              </Button>
+            </div>
+            {submitState.kind === 'ok' && (
+              <div style={submitOkStyle}>
+                <IconCheckOutline16 size={14} /> {t('skillAddOk')}
+                <div style={{ marginTop: 4, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11 }}>{submitState.path}</div>
+                <div style={{ marginTop: 4 }}>{submitState.note}</div>
+              </div>
+            )}
+            {submitState.kind === 'validation' && (
+              <div style={submitErrStyle}>
+                {t('fail')}: {t('skillValidationErrors')}
+                <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                  {submitState.errors.map((e, i) => <li key={i}>{e.field}: {e.message}</li>)}
+                </ul>
+              </div>
+            )}
+            {submitState.kind === 'error' && (
+              <div style={submitErrStyle}>
+                {t('fail')}: {submitState.code}{submitState.reason !== undefined ? ` — ${submitState.reason}` : ''}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Panel>
   )
@@ -570,3 +693,32 @@ const sectionStyle: React.CSSProperties = { marginTop: 12 }
 const sectionHeadingStyle: React.CSSProperties = { fontSize: 13, color: 'var(--dsh-color-text-tertiary, #999)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '16px 0 8px' }
 const codeBlockStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, background: 'var(--dsh-color-code-bg, rgba(127,127,127,0.08))', padding: 8, borderRadius: 4 }
 const callResultStyle: React.CSSProperties = { ...codeBlockStyle, whiteSpace: 'pre-wrap', marginTop: 8 }
+const inputStyle: React.CSSProperties = {
+  padding: '6px 8px',
+  border: '1px solid var(--dsh-color-divider, rgba(127,127,127,0.3))',
+  borderRadius: 4,
+  background: 'var(--dsh-color-input-bg, transparent)',
+  color: 'var(--dsh-color-text-primary, #fff)',
+  fontFamily: 'inherit',
+  fontSize: 13,
+  resize: 'vertical',
+}
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--dsh-color-text-secondary, #888)',
+  fontWeight: 600,
+}
+const submitOkStyle: React.CSSProperties = {
+  padding: 8,
+  borderRadius: 4,
+  background: 'var(--dsh-color-success-bg, rgba(80,180,120,0.1))',
+  color: 'var(--dsh-color-text-primary, #fff)',
+  fontSize: 13,
+}
+const submitErrStyle: React.CSSProperties = {
+  padding: 8,
+  borderRadius: 4,
+  background: 'var(--dsh-color-warning-bg, rgba(220,150,80,0.1))',
+  color: 'var(--dsh-color-text-primary, #fff)',
+  fontSize: 13,
+}
