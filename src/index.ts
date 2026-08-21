@@ -5,6 +5,26 @@
  * The host half is intentionally small — most of the plugin's value lives in
  * the bundled virtuoso-cli skills (see `bundled-skill/`) and the light HTTP
  * surface that lets the settings panel introspect the local `vcli` daemon.
+ *
+ * Service-access boundary
+ * ------------------------
+ * DSH's cordis sandbox (the new dsh-cordis-host-runner runtime, rc.8+
+ * isolated host half) rejects every property access on `ctx` that is not
+ * covered by a live inject tree. **All `ctx.<service>` reads inside this
+ * apply() body must therefore happen inside an `inject()` callback** that
+ * names those services. The original version of this file called
+ * `installVirtuosoSettings` at the top level — that worked against older,
+ * un-sandboxed cordis by luck, but on rc.8 the dsh-settings helper tries
+ * to scope-register through `ctx.settings`, which throws "cannot get
+ * property 'settings' without inject". The boot then fails with the same
+ * error class as a serious runtime fault, masked by whichever upstream
+ * error happened to come first (sharp / libstdc++ in the operator's run).
+ *
+ * The fix: both the settings install and the routes mount live inside
+ * the same `ctx.inject(['webServer', 'loader'], ...)` callback. Settings
+ * keys are surfaced whether or not the dsh-settings service is present,
+ * because `installSettingsSection` itself injects `['settings']` and no-ops
+ * when the service is absent.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -29,29 +49,38 @@ function argvProfile(): string | undefined {
  * Apply the plugin to the host context.
  *
  * The hook waits for `webServer` and `loader` to be present (DSH's ordinary
- * web composition guarantees them on the `web` profile). For testing
- * environments without a web server we still install the settings namespace,
- * so the configuration page works against an unconfigured plugin.
+ * web composition guarantees them on the `web` profile). The settings
+ * section rides the same inject scope — the dsh-settings helper itself
+ * opens a sub-scope on `['settings']`, so being inside `webServer`/`loader`
+ * is sufficient context.
  *
  * @param ctx - Host cordis context.
  * @param config - Loader-supplied config under `config:` in cordis.yml.
  */
 export function apply(ctx: Context, config?: Config): void {
+  // Build the resolved config up-front — both the routes and the settings
+  // hooks share the same object reference, so toggling a setting from the
+  // UI writes back into the route's view of the world without a
+  // re-mount.
   const resolved: VirtuosoConfig = {
     profile: argvProfile() ?? 'web',
-    /** Filled in once `webServer` is available — defaulted to true so the
-     * settings panel can surface the toggle before any host injection runs. */
+    /** Defaulted to true so the settings panel can surface the toggle even
+     * when the loader supplies neither `allowTunnelStart` nor anything in
+     * a legacy default. Mirrors dsh-market's "operator said nothing" vs.
+     * "operator said yes" distinction (#229). */
     allowTunnelStart: config?.allowTunnelStart ?? true,
     allowRestart: config?.allowRestart,
     version: version(),
   }
 
-  // The settings namespace is always installable (it is a no-op on hosts
-  // without a settings service; see src/settings.ts).
-  installVirtuosoSettings(ctx, resolved)
-
   ctx.inject(['webServer', 'loader'], (hostCtx) => {
     const host = hostCtx as unknown as VirtuosoHost
+
+    // Must run inside this inject scope — `installSettingsSection` opens a
+    // nested `ctx.inject(['settings'], ...)` and needs the parent scope to
+    // be live. See the file-level comment for why this used to crash.
+    installVirtuosoSettings(ctx, resolved)
+
     host.effect(
       () => mountVirtuosoRoutes(host, resolved),
       'dsh-virtuoso: http routes',

@@ -26,7 +26,7 @@
     "build": "npm run build:host && npm run build:client",
     "build:host": "tsc -p tsconfig.json",
     "build:client": "tsdown && node scripts/normalize-client-banner.mjs",
-    "check": "npm run typecheck && npm run build && node scripts/validate-skills.mjs",
+    "check": "npm run typecheck && npm run build && node scripts/validate-skills.mjs && node scripts/check-inject-boundary.mjs",
     "validate:registry": "node scripts/validate-skills.mjs",
     "install:local": "node scripts/install-locally.mjs",
     "prepack": "npm run check",
