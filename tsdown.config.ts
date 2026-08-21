@@ -1,0 +1,47 @@
+/**
+ * Browser client bundle for the dsh-virtuoso plugin. Mirrors the dshmarket
+ * preset: a closure-factory artifact that calls
+ * `window.__ModuleLoader__.load({ id, factory })` and resolves externals
+ * through the injected `require` (loader module table).
+ *
+ * Host-only types ship from `lib/types` (tsc); `dts: false` here so we don't
+ * ship a parallel `.d.cts` that would muddy the loader module table.
+ */
+import { defineConfig } from 'tsdown'
+
+const id = 'dsh-virtuoso'
+
+/**
+ * Externals resolved from the loader module table at runtime. Only the
+ * platform seed entries this bundle actually requires — everything else
+ * inlines.
+ */
+const CLIENT_EXTERNALS = ['react', 'react/jsx-runtime', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives']
+
+export default defineConfig({
+  entry: { client: 'src/client/index.ts' },
+  outDir: 'client',
+  format: 'cjs',
+  platform: 'browser',
+  target: 'es2022',
+  dts: false,
+  sourcemap: true,
+  clean: false,
+  deps: {
+    // tsdown auto-externalizes package dependencies; anything NOT in the loader
+    // module table must inline instead — a `require()` the table cannot answer
+    // is a guaranteed runtime throw.
+    neverBundle: [...CLIENT_EXTERNALS],
+  },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+    'import.meta.env.MODE': JSON.stringify('production'),
+    'import.meta.env': JSON.stringify({ MODE: 'production' }),
+  },
+  outputOptions: {
+    entryFileNames: 'client.js',
+    banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, factory: (require) => {`,
+    footer: 'return module.exports; } });',
+    intro: 'var module = { exports: {} }; var exports = module.exports;',
+  },
+})

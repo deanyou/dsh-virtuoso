@@ -1,0 +1,16 @@
+# Build / dependency
+node_modules/
+lib/
+client/*.js.map
+*.tsbuildinfo
+npm-cache/
+
+# Test artefacts
+coverage/
+.vitest/
+
+# Editor / OS
+.DS_Store
+.idea/
+*.log
+.npmrc
