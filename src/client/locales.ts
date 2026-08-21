@@ -17,6 +17,7 @@ export const zh = {
   statusBinaryYes: '已检测到',
   statusBinaryNo: '未找到',
   statusBinaryHint: '需要先运行 `cargo install virtuoso-cli` 才能调用外部 EDA 工具。',
+  statusEnvHint: '环境变量从 dsh web 的进程环境读取,需重启 dsh web 才会生效。',
   statusConfig: '环境配置',
   statusProfile: '当前 profile',
   statusHost: 'Virtuoso 主机',
@@ -28,7 +29,20 @@ export const zh = {
   statusLog: '日志目录',
   statusTimeout: '超时',
 
+  // 已连接的 Virtuoso 会话
+  sessionsTitle: '已连接的 Virtuoso',
+  sessionsLoading: '正在加载会话列表…',
+  sessionsEmpty: '当前没有运行中的 Virtuoso daemon。在 CIW 执行 RBStart() 注册一个会话。',
+  sessionPort: '端口',
+  sessionHost: '主机',
+  sessionUser: '用户',
+  sessionCreated: '启动时间',
+  sessionActive: 'vcli 自动路由到此',
+  sessionCurrent: '当前自动选择的会话',
+  sessionCurrentError: '无法确定自动选择的会话',
+
   // tunnel 操作
+  tunnelSection: '隧道 / daemon',
   tunnelStart: '建立隧道',
   tunnelStop: '断开隧道',
   tunnelStatus: 'Ping daemon',
@@ -37,10 +51,11 @@ export const zh = {
   tunnelPing: 'daemon 已响应',
   tunnelPingFailed: 'daemon 未响应',
   tunnelDisabledHint: '请先到 Settings → Plugins → Virtuoso integration 打开「允许隧道」开关',
+  tunnelLocalHint: 'VB_REMOTE_HOST 未设置或指向本机,这是本地模式 — daemon 直接通过本机端口访问,无需 SSH 隧道。「Ping daemon」按钮仍可用来确认本地 daemon 是否存活。',
 
   // skills tab
   skillsTitle: 'bundled agent skills',
-  skillsHint: 'vcli 的 18 个 agent skill 已随插件一并发布,DSH 的 skill-filesystem 会自动发现。',
+  skillsHint: 'vcli 的 agent skill 已随插件一并发布,DSH 的 skill-filesystem 会自动发现。',
   skillsParsed: '已解析',
   skillsBroken: 'frontmatter 缺失',
   skillsBytes: '字节',
@@ -57,6 +72,8 @@ export const zh = {
 
   // 通用
   refresh: '刷新',
+  autoRefreshOn: '自动刷新: 开 (每 30 秒)',
+  autoRefreshOff: '自动刷新: 关 (点击启用)',
   copy: '复制命令',
   copied: '已复制',
   retry: '重试',
@@ -65,6 +82,7 @@ export const zh = {
   ok: '正常',
   warn: '警告',
   fail: '失败',
+  loading: '加载中…',
 }
 
 export const en = {
@@ -82,6 +100,7 @@ export const en = {
   statusBinaryYes: 'detected',
   statusBinaryNo: 'not found',
   statusBinaryHint: 'Run `cargo install virtuoso-cli` first; the bundled skills will not work without it.',
+  statusEnvHint: 'Environment variables are read from the dsh web process env. Restart dsh web after changing them.',
   statusConfig: 'Environment',
   statusProfile: 'current profile',
   statusHost: 'Virtuoso host',
@@ -93,6 +112,19 @@ export const en = {
   statusLog: 'log dir',
   statusTimeout: 'timeout',
 
+  // Connected Virtuoso sessions
+  sessionsTitle: 'Connected Virtuoso',
+  sessionsLoading: 'Loading session list…',
+  sessionsEmpty: 'No Virtuoso daemon is currently running. Run RBStart() in the CIW to register one.',
+  sessionPort: 'port',
+  sessionHost: 'host',
+  sessionUser: 'user',
+  sessionCreated: 'started',
+  sessionActive: 'vcli auto-routes here',
+  sessionCurrent: 'Auto-selected session',
+  sessionCurrentError: 'Could not determine auto-selected session',
+
+  tunnelSection: 'Tunnel / daemon',
   tunnelStart: 'Start tunnel',
   tunnelStop: 'Stop tunnel',
   tunnelStatus: 'Ping daemon',
@@ -101,9 +133,10 @@ export const en = {
   tunnelPing: 'daemon responded',
   tunnelPingFailed: 'daemon did not respond',
   tunnelDisabledHint: 'Enable the Allow-tunnel toggle under Settings → Plugins → Virtuoso integration first.',
+  tunnelLocalHint: 'VB_REMOTE_HOST is unset or points at this machine, so this is local mode — the daemon is reached directly, no SSH tunnel is needed. Use Ping daemon to confirm the local daemon is alive.',
 
   skillsTitle: 'bundled agent skills',
-  skillsHint: 'The 18 virtuoso-cli agent skills ship with this plugin. DSH\'s skill-filesystem picks them up automatically.',
+  skillsHint: 'The virtuoso-cli agent skills ship with this plugin. DSH\'s skill-filesystem picks them up automatically.',
   skillsParsed: 'parsed',
   skillsBroken: 'missing frontmatter',
   skillsBytes: 'bytes',
@@ -118,6 +151,8 @@ export const en = {
   installLoadBridgeCommand: 'load("/path/to/virtuoso-cli/resources/ramic_bridge.il")',
 
   refresh: 'Refresh',
+  autoRefreshOn: 'Auto-refresh: on (every 30 s)',
+  autoRefreshOff: 'Auto-refresh: off (click to enable)',
   copy: 'Copy command',
   copied: 'Copied',
   retry: 'Retry',
@@ -126,4 +161,5 @@ export const en = {
   ok: 'OK',
   warn: 'warn',
   fail: 'fail',
+  loading: 'Loading…',
 }

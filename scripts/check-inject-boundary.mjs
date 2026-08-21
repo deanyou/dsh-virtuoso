@@ -2,17 +2,9 @@
 // check-inject-boundary: ensure the plugin entry's service access happens
 // inside a ctx.inject(...) callback.
 //
-// Background: on dsh-cordis-host-runner (rc.8+), the host-half runner
-// runs each plugin's `apply` in a vm realm whose `ctx` object allows
-// `ctx.<service>` access **only when the service name is declared in
-// the inject tree of the active scope**. Reading a service from outside
-// any open inject callback throws "cannot get property 'FOO' without
-// inject" — which masks itself behind whatever upstream error happens
-// to surface first (e.g. a sharp / libstdc++ mismatch on Cadence
-// workstations). Plugin authors with no cordis sandbox experience
-// commonly write `installSomethingService(ctx)` at the top of apply()
-// because that is what the older (un-sandboxed) cordis accepted; we
-// shipped that bug as dsh-virtuoso#2.
+// Background and the canonical explanation of the cordis sandbox
+// requirement live in `src/settings.ts` (file-level comment); the issue
+// itself is dsh-virtuoso#2.
 //
 // This script does a static scan over `lib/index.js` (the build output
 // the host runner actually loads) and rejects any caller of a known

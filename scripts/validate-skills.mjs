@@ -2,11 +2,18 @@
 // Validate the bundled-skill/ tree against the upstream source tree.
 //
 // Walks `bundled-skill/<id>/SKILL.md`, asserts every file begins with a
-// YAML frontmatter that has `name` and `description`, and that the
-// description field is non-empty. Reports broken skills as a hard error.
+// YAML frontmatter that has `name`, `description`, and `allowed-tools`.
+//
+// Why `allowed-tools` is required: the plugin's trust contract is that
+// every bundled skill restricts the model to vcli (or the legacy
+// virtuoso alias) plus Read/Write/Edit on local files. Any skill that
+// ships without an `allowed-tools` line inherits the host's default tool
+// set, which is much wider and an attacker could pivot through it
+// (issue #trust:allowed-tools). See sync-skills.mjs for the rewrite that
+// enforces the gate on every copy.
 //
 // Exit code 1 on the first parse issue so a CI pre-publish step catches a
-// broken upsteam sync (#integrity:prepublish).
+// broken upstream sync (#integrity:prepublish).
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -51,12 +58,17 @@ for (const id of ids) {
   }
   const hasName = /^name:\s*\S/m.test(fm)
   const hasDesc = /^description:\s*(.+)$/m.test(fm) || /^description:\s*\|/m.test(fm)
+  const hasTools = /^allowed-tools:\s*\S/m.test(fm)
   if (!hasName) {
     console.error(`validate-skills: ${id}: missing 'name:'`)
     problems += 1
   }
   if (!hasDesc) {
     console.error(`validate-skills: ${id}: missing 'description:'`)
+    problems += 1
+  }
+  if (!hasTools) {
+    console.error(`validate-skills: ${id}: missing 'allowed-tools:' (model can use any tool; run scripts/sync-skills.mjs to fix)`)
     problems += 1
   }
 }

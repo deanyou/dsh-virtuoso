@@ -11,6 +11,7 @@ description: |
 author: Codex
 version: 2.0.0
 date: 2026-04-06
+allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit
 ---
 
 # Ocean run() Reliability & Netlist Regeneration

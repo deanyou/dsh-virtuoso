@@ -20,11 +20,15 @@
 
 下面四种安装路径,任选一种。
 
-### A. 从发布的包(已经在 npm 之后)
+### A. 从 npm 发布的包
 
 ```sh
 dsh plugin --profile web add dsh-virtuoso
 ```
+
+`npm publish` 发布的是预构建的 `lib/` 和 `client/`,用户端不需要 build,
+也不需要为 `prepare` 脚本授权。代价是发布产物与具体版本绑定,bug 修复需要
+bump 版本号再发。
 
 ### B. 从本仓库,用 helper(开发期推荐)
 

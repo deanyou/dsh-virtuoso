@@ -13,6 +13,7 @@ description: |
 author: Codex
 version: 1.0.0
 date: 2026-04-07
+allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit
 ---
 
 # Spectre Netlist-Mode Gotchas

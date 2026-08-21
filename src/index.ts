@@ -6,25 +6,13 @@
  * the bundled virtuoso-cli skills (see `bundled-skill/`) and the light HTTP
  * surface that lets the settings panel introspect the local `vcli` daemon.
  *
- * Service-access boundary
- * ------------------------
- * DSH's cordis sandbox (the new dsh-cordis-host-runner runtime, rc.8+
- * isolated host half) rejects every property access on `ctx` that is not
- * covered by a live inject tree. **All `ctx.<service>` reads inside this
- * apply() body must therefore happen inside an `inject()` callback** that
- * names those services. The original version of this file called
- * `installVirtuosoSettings` at the top level — that worked against older,
- * un-sandboxed cordis by luck, but on rc.8 the dsh-settings helper tries
- * to scope-register through `ctx.settings`, which throws "cannot get
- * property 'settings' without inject". The boot then fails with the same
- * error class as a serious runtime fault, masked by whichever upstream
- * error happened to come first (sharp / libstdc++ in the operator's run).
- *
- * The fix: both the settings install and the routes mount live inside
- * the same `ctx.inject(['webServer', 'loader'], ...)` callback. Settings
- * keys are surfaced whether or not the dsh-settings service is present,
- * because `installSettingsSection` itself injects `['settings']` and no-ops
- * when the service is absent.
+ * Both `installVirtuosoSettings` and `mountVirtuosoRoutes` are ctx-needing
+ * helpers; they must be called from inside an active inject scope. See
+ * `src/settings.ts` for the canonical explanation of why, and
+ * `scripts/check-inject-boundary.mjs` for the static check that catches
+ * misplaced callers before they reach `dsh web`. The `['webServer',
+ * 'loader']` scope chosen here matches the dsh-market host composition
+ * and is enough to cover both helpers.
  */
 
 import type { Context } from '@deepseek-ai/cordis'

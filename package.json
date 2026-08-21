@@ -6,9 +6,20 @@
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "license": "MIT",
+  "author": {
+    "name": "dean.you",
+    "email": "youliuyi61@qq.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/deanyou/dsh-virtuoso.git"
+  },
+  "homepage": "https://github.com/deanyou/dsh-virtuoso#readme",
+  "bugs": {
+    "url": "https://github.com/deanyou/dsh-virtuoso/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "keywords": [
     "deepseek",
@@ -25,10 +36,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "build": "npm run build:host && npm run build:client",
     "build:host": "tsc -p tsconfig.json",
-    "build:client": "tsdown && node scripts/normalize-client-banner.mjs",
-    "check": "npm run typecheck && npm run build && node scripts/validate-skills.mjs && node scripts/check-inject-boundary.mjs",
+    "build:client": "tsdown && node scripts/check-client-banner.mjs",
+    "check": "npm run typecheck && npm run build && node scripts/validate-skills.mjs && node scripts/check-inject-boundary.mjs && npm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "validate:registry": "node scripts/validate-skills.mjs",
     "install:local": "node scripts/install-locally.mjs",
+    "publish:dry-run": "node scripts/publish-npm.mjs",
+    "publish:npm": "node scripts/publish-npm.mjs --publish",
     "prepack": "npm run check",
     "prepare": "npm run build"
   },
@@ -90,7 +105,8 @@
     "react": "^18.3.1",
     "react-dom": "~18.3.1",
     "tsdown": "^0.22.14",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

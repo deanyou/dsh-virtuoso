@@ -45,6 +45,7 @@ window.__ModuleLoader__.load({
 			statusBinaryYes: "已检测到",
 			statusBinaryNo: "未找到",
 			statusBinaryHint: "需要先运行 `cargo install virtuoso-cli` 才能调用外部 EDA 工具。",
+			statusEnvHint: "环境变量从 dsh web 的进程环境读取,需重启 dsh web 才会生效。",
 			statusConfig: "环境配置",
 			statusProfile: "当前 profile",
 			statusHost: "Virtuoso 主机",
@@ -55,6 +56,17 @@ window.__ModuleLoader__.load({
 			statusCache: "缓存目录",
 			statusLog: "日志目录",
 			statusTimeout: "超时",
+			sessionsTitle: "已连接的 Virtuoso",
+			sessionsLoading: "正在加载会话列表…",
+			sessionsEmpty: "当前没有运行中的 Virtuoso daemon。在 CIW 执行 RBStart() 注册一个会话。",
+			sessionPort: "端口",
+			sessionHost: "主机",
+			sessionUser: "用户",
+			sessionCreated: "启动时间",
+			sessionActive: "vcli 自动路由到此",
+			sessionCurrent: "当前自动选择的会话",
+			sessionCurrentError: "无法确定自动选择的会话",
+			tunnelSection: "隧道 / daemon",
 			tunnelStart: "建立隧道",
 			tunnelStop: "断开隧道",
 			tunnelStatus: "Ping daemon",
@@ -63,8 +75,9 @@ window.__ModuleLoader__.load({
 			tunnelPing: "daemon 已响应",
 			tunnelPingFailed: "daemon 未响应",
 			tunnelDisabledHint: "请先到 Settings → Plugins → Virtuoso integration 打开「允许隧道」开关",
+			tunnelLocalHint: "VB_REMOTE_HOST 未设置或指向本机,这是本地模式 — daemon 直接通过本机端口访问,无需 SSH 隧道。「Ping daemon」按钮仍可用来确认本地 daemon 是否存活。",
 			skillsTitle: "bundled agent skills",
-			skillsHint: "vcli 的 18 个 agent skill 已随插件一并发布,DSH 的 skill-filesystem 会自动发现。",
+			skillsHint: "vcli 的 agent skill 已随插件一并发布,DSH 的 skill-filesystem 会自动发现。",
 			skillsParsed: "已解析",
 			skillsBroken: "frontmatter 缺失",
 			skillsBytes: "字节",
@@ -77,6 +90,8 @@ window.__ModuleLoader__.load({
 			installLoadBridgeHint: "在 Virtuoso CIW 中执行 (可写入 ~/.cdsinit 以自动加载):",
 			installLoadBridgeCommand: "load(\"/path/to/virtuoso-cli/resources/ramic_bridge.il\")",
 			refresh: "刷新",
+			autoRefreshOn: "自动刷新: 开 (每 30 秒)",
+			autoRefreshOff: "自动刷新: 关 (点击启用)",
 			copy: "复制命令",
 			copied: "已复制",
 			retry: "重试",
@@ -84,7 +99,8 @@ window.__ModuleLoader__.load({
 			empty: "(空)",
 			ok: "正常",
 			warn: "警告",
-			fail: "失败"
+			fail: "失败",
+			loading: "加载中…"
 		};
 		const en = {
 			nav: "Virtuoso",
@@ -99,6 +115,7 @@ window.__ModuleLoader__.load({
 			statusBinaryYes: "detected",
 			statusBinaryNo: "not found",
 			statusBinaryHint: "Run `cargo install virtuoso-cli` first; the bundled skills will not work without it.",
+			statusEnvHint: "Environment variables are read from the dsh web process env. Restart dsh web after changing them.",
 			statusConfig: "Environment",
 			statusProfile: "current profile",
 			statusHost: "Virtuoso host",
@@ -109,6 +126,17 @@ window.__ModuleLoader__.load({
 			statusCache: "cache dir",
 			statusLog: "log dir",
 			statusTimeout: "timeout",
+			sessionsTitle: "Connected Virtuoso",
+			sessionsLoading: "Loading session list…",
+			sessionsEmpty: "No Virtuoso daemon is currently running. Run RBStart() in the CIW to register one.",
+			sessionPort: "port",
+			sessionHost: "host",
+			sessionUser: "user",
+			sessionCreated: "started",
+			sessionActive: "vcli auto-routes here",
+			sessionCurrent: "Auto-selected session",
+			sessionCurrentError: "Could not determine auto-selected session",
+			tunnelSection: "Tunnel / daemon",
 			tunnelStart: "Start tunnel",
 			tunnelStop: "Stop tunnel",
 			tunnelStatus: "Ping daemon",
@@ -117,8 +145,9 @@ window.__ModuleLoader__.load({
 			tunnelPing: "daemon responded",
 			tunnelPingFailed: "daemon did not respond",
 			tunnelDisabledHint: "Enable the Allow-tunnel toggle under Settings → Plugins → Virtuoso integration first.",
+			tunnelLocalHint: "VB_REMOTE_HOST is unset or points at this machine, so this is local mode — the daemon is reached directly, no SSH tunnel is needed. Use Ping daemon to confirm the local daemon is alive.",
 			skillsTitle: "bundled agent skills",
-			skillsHint: "The 18 virtuoso-cli agent skills ship with this plugin. DSH's skill-filesystem picks them up automatically.",
+			skillsHint: "The virtuoso-cli agent skills ship with this plugin. DSH's skill-filesystem picks them up automatically.",
 			skillsParsed: "parsed",
 			skillsBroken: "missing frontmatter",
 			skillsBytes: "bytes",
@@ -131,6 +160,8 @@ window.__ModuleLoader__.load({
 			installLoadBridgeHint: "Paste this in the CIW (also safe to add to ~/.cdsinit):",
 			installLoadBridgeCommand: "load(\"/path/to/virtuoso-cli/resources/ramic_bridge.il\")",
 			refresh: "Refresh",
+			autoRefreshOn: "Auto-refresh: on (every 30 s)",
+			autoRefreshOff: "Auto-refresh: off (click to enable)",
 			copy: "Copy command",
 			copied: "Copied",
 			retry: "Retry",
@@ -138,8 +169,29 @@ window.__ModuleLoader__.load({
 			empty: "(empty)",
 			ok: "OK",
 			warn: "warn",
-			fail: "fail"
+			fail: "fail",
+			loading: "Loading…"
 		};
+		//#endregion
+		//#region src/client/market-data.ts
+		/**
+		* Redact file paths from a stderr string.
+		*
+		* Used by `CallResult` for shared-kiosk deployments where the panel is
+		* visible to a wider audience and raw paths like
+		* `/home/user1/.cache/virtuoso_bridge/...` would leak the operator's
+		* username. Replaces anything matching an absolute path or
+		* `/path/...` with `[PATH]` — preserves enough information for the
+		* operator to debug (the shape of the error) without exposing real
+		* filesystem layout.
+		*
+		* Not server-side: the route returns the raw stderr so the operator's
+		* own copy of the panel can show full detail; the redaction is purely
+		* a presentation concern.
+		*/
+		function redactPaths(input) {
+			return input.replace(/\/(?:[\w.-]+)(?:\/[\w.-]+)+/g, "[PATH]").replace(/[A-Z]:\\(?:[\w.-]+\\?)+/gi, "[PATH]").replace(/~?\/[\w.~-]+(?:\/[\w.~-]+)+/g, "[PATH]");
+		}
 		//#endregion
 		//#region src/client/VirtuosoSection.tsx
 		/**
@@ -157,7 +209,12 @@ window.__ModuleLoader__.load({
 			const [ping, setPing] = (0, react.useState)("idle");
 			const [tunnelOutcome, setTunnelOutcome] = (0, react.useState)(null);
 			const [pingOutcome, setPingOutcome] = (0, react.useState)(null);
+			const [sessions, setSessions] = (0, react.useState)(null);
+			const [sessionsError, setSessionsError] = (0, react.useState)(null);
+			const [current, setCurrent] = (0, react.useState)(null);
+			const [currentError, setCurrentError] = (0, react.useState)(null);
 			const [copyState, setCopyState] = (0, react.useState)("idle");
+			const [autoRefresh, setAutoRefresh] = (0, react.useState)(false);
 			const refresh = (0, react.useCallback)(async () => {
 				setStatusError(null);
 				try {
@@ -169,9 +226,67 @@ window.__ModuleLoader__.load({
 					setStatusError(err.message);
 				}
 			}, []);
+			const loadSessions = (0, react.useCallback)(async () => {
+				setSessionsError(null);
+				try {
+					const r = await fetch("/dsh-virtuoso/sessions", { credentials: "same-origin" });
+					if (!r.ok) {
+						const fallback = await r.json().catch(() => null);
+						throw new Error(fallback?.error ?? `HTTP ${r.status}`);
+					}
+					const data = await r.json();
+					setSessions(data);
+				} catch (err) {
+					setSessionsError(err.message);
+				}
+			}, []);
+			const loadCurrent = (0, react.useCallback)(async () => {
+				setCurrentError(null);
+				try {
+					const r = await fetch("/dsh-virtuoso/session-current", { credentials: "same-origin" });
+					if (!r.ok) {
+						const fallback = await r.json().catch(() => null);
+						throw new Error(fallback?.error ?? `HTTP ${r.status}`);
+					}
+					const data = await r.json();
+					if (data.status === "error" || data.session === null) setCurrent(null);
+					else setCurrent({
+						session: data.session,
+						port: data.port ?? 0,
+						autoSelected: data.auto_selected ?? true
+					});
+				} catch (err) {
+					setCurrentError(err.message);
+					setCurrent(null);
+				}
+			}, []);
+			const refreshAll = (0, react.useCallback)(async () => {
+				await Promise.all([
+					refresh(),
+					loadSessions(),
+					loadCurrent()
+				]);
+			}, [
+				refresh,
+				loadSessions,
+				loadCurrent
+			]);
 			(0, react.useEffect)(() => {
-				refresh();
-			}, [refresh]);
+				refreshAll();
+			}, [refreshAll]);
+			(0, react.useEffect)(() => {
+				if (!autoRefresh || tab !== "status") return;
+				const id = window.setInterval(() => {
+					refreshAll();
+				}, 3e4);
+				return () => {
+					window.clearInterval(id);
+				};
+			}, [
+				autoRefresh,
+				tab,
+				refreshAll
+			]);
 			const tunnelStart = (0, react.useCallback)(async () => {
 				if (status !== null && status.allowTunnelStart === false) {
 					setTunnel("fail");
@@ -193,7 +308,7 @@ window.__ModuleLoader__.load({
 					})).json();
 					setTunnelOutcome(outcome);
 					setTunnel(outcome.ok ? "ok" : "fail");
-					refresh();
+					refreshAll();
 				} catch (err) {
 					setTunnel("fail");
 					setTunnelOutcome({
@@ -205,7 +320,7 @@ window.__ModuleLoader__.load({
 						reason: "exit"
 					});
 				}
-			}, [status, refresh]);
+			}, [status, refreshAll]);
 			const tunnelStop = (0, react.useCallback)(async () => {
 				setTunnel("stopping");
 				try {
@@ -215,7 +330,7 @@ window.__ModuleLoader__.load({
 					})).json();
 					setTunnelOutcome(outcome);
 					setTunnel(outcome.ok ? "ok" : "fail");
-					refresh();
+					refreshAll();
 				} catch (err) {
 					setTunnel("fail");
 					setTunnelOutcome({
@@ -227,7 +342,7 @@ window.__ModuleLoader__.load({
 						reason: "exit"
 					});
 				}
-			}, [refresh]);
+			}, [refreshAll]);
 			const runPing = (0, react.useCallback)(async () => {
 				setPing("pinging");
 				try {
@@ -237,6 +352,7 @@ window.__ModuleLoader__.load({
 					})).json();
 					setPingOutcome(outcome);
 					setPing(outcome.ok ? "ok" : "fail");
+					refreshAll();
 				} catch (err) {
 					setPing("fail");
 					setPingOutcome({
@@ -248,7 +364,7 @@ window.__ModuleLoader__.load({
 						reason: "exit"
 					});
 				}
-			}, []);
+			}, [refreshAll]);
 			const tabs = (0, react.useMemo)(() => [
 				{
 					id: "status",
@@ -284,10 +400,16 @@ window.__ModuleLoader__.load({
 					tunnelOutcome,
 					pingPhase: ping,
 					pingOutcome,
+					sessions,
+					sessionsError,
+					current,
+					currentError,
+					autoRefresh,
 					onTunnelStart: tunnelStart,
 					onTunnelStop: tunnelStop,
 					onPing: runPing,
-					onRefresh: () => void refresh()
+					onRefresh: () => void refreshAll(),
+					onToggleAutoRefresh: () => setAutoRefresh((v) => !v)
 				}),
 				tab === "skills" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SkillsTab, {
 					t,
@@ -336,7 +458,11 @@ window.__ModuleLoader__.load({
 		};
 		function StatusTab(props) {
 			const { t, status } = props;
-			if (status === null && props.error === null) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Panel, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }), " loading…"] });
+			if (status === null && props.error === null) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Panel, { children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }),
+				" ",
+				t("loading")
+			] });
 			if (props.error !== null) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Panel, { children: [
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutline16, { size: 14 }),
 				" ",
@@ -352,6 +478,7 @@ window.__ModuleLoader__.load({
 			] });
 			if (status === null) return null;
 			const tunnelDisabled = status.allowTunnelStart === false;
+			const isLocal = status.cli.isRemote === false;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Panel, { children: [
 				/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					style: {
@@ -363,14 +490,30 @@ window.__ModuleLoader__.load({
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
 						style: { margin: 0 },
 						children: t("statusTitle")
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-						label: t("refresh"),
-						side: "bottom",
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-							variant: "ghost",
-							icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, { size: 14 }),
-							onClick: props.onRefresh
-						})
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: {
+							display: "flex",
+							alignItems: "center",
+							gap: 4
+						},
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+							label: props.autoRefresh ? t("autoRefreshOn") : t("autoRefreshOff"),
+							side: "bottom",
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+								variant: props.autoRefresh ? "primary" : "ghost",
+								onClick: props.onToggleAutoRefresh,
+								size: "sm",
+								children: props.autoRefresh ? "⏱ 30s" : "⏱ off"
+							})
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+							label: t("refresh"),
+							side: "bottom",
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+								variant: "ghost",
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, { size: 14 }),
+								onClick: props.onRefresh
+							})
+						})]
 					})]
 				}),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, {
@@ -386,6 +529,7 @@ window.__ModuleLoader__.load({
 					] })
 				}),
 				!status.cli.hasBinary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("statusBinaryHint") }),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("statusEnvHint") }),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
 					style: sectionHeadingStyle,
 					children: t("statusConfig")
@@ -408,7 +552,7 @@ window.__ModuleLoader__.load({
 				}),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, {
 					label: t("statusRemote"),
-					value: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: status.cli.remoteHost })
+					value: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: status.cli.remoteHost ?? t("empty") })
 				}),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, {
 					label: t("statusJump"),
@@ -428,9 +572,37 @@ window.__ModuleLoader__.load({
 				}),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
 					style: sectionHeadingStyle,
-					children: "tunnel / daemon"
+					children: t("sessionsTitle")
+				}),
+				props.sessions === null && props.sessionsError === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("sessionsLoading") }),
+				props.sessionsError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: `${t("fail")}: ${props.sessionsError}` }),
+				props.sessions !== null && props.sessions.sessions.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("sessionsEmpty") }),
+				props.sessions !== null && props.sessions.sessions.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					style: {
+						display: "flex",
+						flexDirection: "column",
+						gap: 4
+					},
+					children: props.sessions.sessions.map((s, idx) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SessionRow, {
+						session: s,
+						currentId: props.current?.session ?? null,
+						labels: {
+							port: t("sessionPort"),
+							host: t("sessionHost"),
+							user: t("sessionUser"),
+							started: t("sessionCreated"),
+							active: t("sessionActive")
+						}
+					}, s.id ?? `s${idx}`))
+				}),
+				props.current !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: `${t("sessionCurrent")}: ${props.current.session} (port ${props.current.port})` }),
+				props.currentError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: `${t("sessionCurrentError")}: ${props.currentError}` }),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
+					style: sectionHeadingStyle,
+					children: t("tunnelSection")
 				}),
 				tunnelDisabled && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("tunnelDisabledHint") }),
+				isLocal && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Hint, { text: t("tunnelLocalHint") }),
 				/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					style: {
 						display: "flex",
@@ -439,14 +611,14 @@ window.__ModuleLoader__.load({
 					children: [
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "primary",
-							disabled: tunnelDisabled || props.tunnelPhase === "starting" || props.tunnelPhase === "stopping",
+							disabled: tunnelDisabled || isLocal || props.tunnelPhase === "starting" || props.tunnelPhase === "stopping",
 							onClick: props.onTunnelStart,
 							icon: props.tunnelPhase === "starting" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLoadingOutline16, { size: 14 }) : void 0,
 							children: t("tunnelStart")
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
-							disabled: !status.cli.hasBinary || props.tunnelPhase === "starting" || props.tunnelPhase === "stopping",
+							disabled: isLocal || !status.cli.hasBinary || props.tunnelPhase === "starting" || props.tunnelPhase === "stopping",
 							onClick: props.onTunnelStop,
 							icon: props.tunnelPhase === "stopping" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLoadingOutline16, { size: 14 }) : void 0,
 							children: t("tunnelStop")
@@ -519,6 +691,70 @@ window.__ModuleLoader__.load({
 					},
 					children: s.description
 				})
+			});
+		}
+		/**
+		* One row in the "Connected Virtuoso" section. The session id is the
+		* canonical handle the user passes to vcli with `--session`; the port is
+		* what the local daemon is listening on (the bridge daemon listens on
+		* each Virtuoso instance's port, not VB_PORT).
+		*
+		* The row is intentionally flat (not collapsible): the four fields are
+		* short and the user benefits from seeing all the session metadata at a
+		* glance. The `currentId` flag adds a "● active" marker when this is the
+		* session that `vcli session current` would auto-select — useful when
+		* multiple Virtuoso instances are running and the user wants to know
+		* which one the next `vcli skill exec` will land on.
+		*/
+		function SessionRow(props) {
+			const s = props.session;
+			const isCurrent = props.currentId !== null && s.id !== void 0 && props.currentId === s.id;
+			const title = s.id !== void 0 ? isCurrent ? `● ${s.id} — ${props.labels.active}` : s.id : "?";
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				style: {
+					padding: "6px 8px",
+					borderLeft: `2px solid ${isCurrent ? "var(--dsh-color-accent, #4f8ef7)" : "transparent"}`,
+					background: "var(--dsh-color-code-bg, rgba(127,127,127,0.04))",
+					borderRadius: 3
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					style: {
+						fontWeight: 600,
+						color: isCurrent ? "var(--dsh-color-accent, #4f8ef7)" : "var(--dsh-color-text-primary, #fff)"
+					},
+					children: title
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					style: {
+						display: "flex",
+						flexWrap: "wrap",
+						gap: "4px 12px",
+						fontSize: 12,
+						color: "var(--dsh-color-text-secondary, #888)",
+						marginTop: 2
+					},
+					children: [
+						s.port !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							props.labels.port,
+							": ",
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: s.port })
+						] }),
+						s.host !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							props.labels.host,
+							": ",
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: s.host })
+						] }),
+						s.user !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							props.labels.user,
+							": ",
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: s.user })
+						] }),
+						s.created !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							props.labels.started,
+							": ",
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: s.created })
+						] })
+					]
+				})]
 			});
 		}
 		function InstallTab(props) {
@@ -612,7 +848,8 @@ window.__ModuleLoader__.load({
 			});
 		}
 		function CallResult(props) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("pre", {
+			const stderrDisplay = props.outcome.stderr ? redactPaths(props.outcome.stderr) : "";
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("pre", {
 				style: callResultStyle,
 				children: [
 					"[",
@@ -627,10 +864,21 @@ window.__ModuleLoader__.load({
 					" duration=",
 					String(props.outcome.durationMs),
 					"ms",
-					props.outcome.stderr && `\nstderr: ${props.outcome.stderr}`
+					stderrDisplay && `\nstderr: ${stderrDisplay}`
 				]
-			});
+			}), props.outcome.note !== void 0 && props.outcome.note !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				style: noteStyle,
+				children: props.outcome.note
+			})] });
 		}
+		const noteStyle = {
+			margin: "4px 0 0",
+			padding: "4px 8px",
+			borderLeft: "2px solid var(--dsh-color-accent, #4f8ef7)",
+			color: "var(--dsh-color-text-secondary, #888)",
+			fontSize: 12,
+			background: "var(--dsh-color-code-bg, rgba(127,127,127,0.04))"
+		};
 		const panelStyle = { padding: 16 };
 		const rowStyle = {
 			display: "flex",
@@ -746,7 +994,7 @@ window.__ModuleLoader__.load({
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [
 									t("statusRemote"),
 									": ",
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: status.cli.remoteHost })
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: status.cli.remoteHost ?? t("empty") })
 								] }),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [
 									t("statusProfile"),

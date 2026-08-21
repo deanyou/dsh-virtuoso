@@ -44,6 +44,12 @@ for (const entry of entries) {
 
   // Split frontmatter from body so we only rewrite the gate line, not the
   // shell examples the agent is expected to type verbatim.
+  // Standard gate applied to every skill that ships through the bundle.
+  // The plugin's contract is that the agent can only invoke `vcli` (or the
+  // legacy `virtuoso` alias) via Bash, plus read/edit local files. Any
+  // skill that doesn't declare this gate inherits the host's default
+  // tool set, which is much wider and an attacker could pivot through it.
+  const GATE = 'allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit'
   const openFence = body.indexOf('---')
   if (openFence === 0) {
     const closeFence = body.indexOf('\n---', 3)
@@ -51,13 +57,28 @@ for (const entry of entries) {
       const closeEnd = body.indexOf('\n', closeFence + 4)
       const head = body.slice(0, closeEnd !== -1 ? closeEnd + 1 : closeFence + 4)
       const tail = body.slice(closeEnd !== -1 ? closeEnd + 1 : closeFence + 4)
-      const rewrittenHead = head.replace(
-        /^allowed-tools:\s*Bash\(\\\*\/virtuoso \*\\\)\s*$/m,
-        'allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit',
-      ).replace(
-        /^allowed-tools:\s*(.*)$/m,
-        (match, rest) => match.startsWith('allowed-tools: Bash(*/vcli') ? match : `allowed-tools: Bash(*/vcli *) Bash(*/virtuoso *) Read Write Edit`,
-      )
+      let rewrittenHead = head
+      if (/^allowed-tools:\s*Bash\(\\\*\/virtuoso \*\\\)\s*$/m.test(head)) {
+        // Legacy upstream gate — replace with the standard one.
+        rewrittenHead = rewrittenHead.replace(
+          /^allowed-tools:\s*Bash\(\\\*\/virtuoso \*\\\)\s*$/m,
+          GATE,
+        )
+      } else if (/^allowed-tools:\s*(.*)$/m.test(head)) {
+        // Some other gate present — keep the agent's text but prepend the
+        // standard gate so the vcli invocation is always whitelisted.
+        rewrittenHead = rewrittenHead.replace(
+          /^allowed-tools:\s*(.*)$/m,
+          (match) => match.startsWith('allowed-tools: Bash(*/vcli') ? match : `${GATE}\n${match}`,
+        )
+      } else {
+        // No gate line at all — insert one BEFORE the closing `---`. This
+        // is the silent-trust-gap fix: upstream skills that omit
+        // allowed-tools used to slip through ungated.
+        const insertion = `${GATE}\n`
+        const lastNewline = head.lastIndexOf('\n')
+        rewrittenHead = head.slice(0, lastNewline + 1) + insertion + head.slice(lastNewline + 1)
+      }
       body = rewrittenHead + tail
     }
   }

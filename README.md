@@ -21,11 +21,17 @@ English | [中文](README.zh.md)
 
 Pick one of the three install paths below.
 
-### A. From a published package (when it's on npm)
+### A. From a published package (npm)
 
 ```sh
 dsh plugin --profile web add dsh-virtuoso
 ```
+
+`npm publish` ships the pre-built `lib/` and `client/`; the user does not
+need a build step, nor do they have to authorize any `prepare` script.
+The trade-off vs tarball/Git-install: the published artifact is bound
+to a specific `dsh-virtuoso` version; bug fixes require bumping the
+version and re-publishing.
 
 ### B. From this checkout, via the helper (recommended for development)
 

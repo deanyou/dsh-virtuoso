@@ -13,17 +13,26 @@
  * runtime. Updated values are written back to the in-memory `resolved`
  * object the routes read from.
  *
- * Service-access boundary: dsh-settings' `installSettingsSection` itself
- * calls `ctx.inject(['settings'], ...)` internally, so it tolerates being
- * invoked from outside an active inject scope. **But we still have to be
- * inside some inject scope** (e.g. the `['webServer', 'loader']` scope we
- * open in `src/index.ts`) — the cordis sandbox used by dsh-cordis-host-runner
- * rejects `ctx.settings` access from the bare apply() entry because settings
- * is not in the inject tree of the un-scoped context. Calling this from
- * outside that inject would crash with "cannot get property 'settings'
- * without inject" (issue #2). The host entry in `src/index.ts` therefore
- * invokes `installVirtuosoSettings` from inside the inject callback — see
- * that file for the constraint.
+ * ── Service-access boundary ─────────────────────────────────────────────
+ * dsh-settings' `installSettingsSection` internally opens a nested
+ * `ctx.inject(['settings'], ...)`. **The outer `installSettingsSection`
+ * call must already be inside an active inject scope** — typically the
+ * `ctx.inject(['webServer', 'loader'], ...)` opened in `src/index.ts`.
+ *
+ * The cordis sandbox used by dsh-cordis-host-runner (rc.8+) rejects every
+ * `ctx.<service>` access that is not covered by a live inject tree. Reading
+ * `ctx.settings` from the bare apply() entry throws "cannot get property
+ * 'settings' without inject" (issue #2). The same rule applies to every
+ * helper that calls a ctx-needing function — see
+ * `scripts/check-inject-boundary.mjs` for the static check that catches
+ * misplaced callers before they reach `dsh web`.
+ *
+ * `installSettingsSection` itself tolerates being invoked from outside an
+ * active inject scope (its internal `ctx.inject(['settings'], ...)` is a
+ * leaf node: if `settings` is absent from the composition, the inner
+ * callback never runs). So hosts without a `settings` service end up with
+ * no namespace registered — clean downgrade.
+ * ────────────────────────────────────────────────────────────────────────
  */
 
 import type { Context } from '@deepseek-ai/cordis'

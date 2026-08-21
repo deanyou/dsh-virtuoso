@@ -65,7 +65,7 @@ export function SettingsCard(props: SettingsCardProps) {
         {status !== null && (
           <ul style={{ margin: 0, paddingLeft: 16 }}>
             <li>vcli binary: {status.cli.hasBinary ? t('statusBinaryYes') : t('statusBinaryNo')}</li>
-            <li>{t('statusRemote')}: <code>{status.cli.remoteHost}</code></li>
+            <li>{t('statusRemote')}: <code>{status.cli.remoteHost ?? t('empty')}</code></li>
             <li>{t('statusProfile')}: <code>{status.profile}</code></li>
             <li>bundled skills: <code>{status.skills.length}</code></li>
           </ul>

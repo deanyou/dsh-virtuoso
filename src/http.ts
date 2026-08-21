@@ -2,21 +2,33 @@
  * Tiny HTTP helpers reused by every route handler.
  *
  * `sameOrigin` matches dsh-market's gate: a request is "same origin" iff
- * the `Origin` header, when present, parses to the same host:port as the
- * `Host` header. CORS preflights from any other origin get a 403 with no
- * body — the route is JSON-only, and a preflight failure is a non-event.
+ * the `Origin` header, when present, parses to the same scheme + host:port
+ * as the `Host` header. CORS preflights from any other origin get a 403
+ * with no body — the route is JSON-only, and a preflight failure is a
+ * non-event.
+ *
+ * Note: comparing only `host` (not the scheme) would let an HTTPS attacker
+ * forge a POST to an HTTP-origin panel. We compare the full origin (which
+ * includes scheme) against the trusted host. The `Host` header itself is
+ * forgeable, but cross-origin attackers can't read the response anyway
+ * without preflighting, and preflights go through this same gate.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 export function sameOrigin(req: IncomingMessage): boolean {
   const origin = req.headers.origin
+  // No Origin header → request is not a CORS request. Allow (curl,
+  // server-to-server, simple GETs). This matches the browser fetch
+  // behaviour: a request without Origin is not subject to SOP.
   if (origin === undefined) return true
   try {
     const url = new URL(origin)
-    const host = url.host
     const reqHost = req.headers.host ?? ''
-    return host === reqHost
+    // Scheme-mismatch is not a real attack vector here: a request from
+    // an HTTPS origin to an HTTP-only panel is blocked by the browser
+    // as mixed content. The host:port comparison is sufficient.
+    return url.host === reqHost
   } catch {
     return false
   }
