@@ -19,11 +19,55 @@ English | [中文](README.zh.md)
 
 ## Install
 
+Pick one of the three install paths below.
+
+### A. From a published package (when it's on npm)
+
 ```sh
 dsh plugin --profile web add dsh-virtuoso
 ```
 
-Restart `dsh web`, then open **Settings → Virtuoso**.
+### B. From this checkout, via the helper (recommended for development)
+
+```sh
+npm install
+npm run install:local        # = node scripts/install-locally.mjs
+# (pass --profile <name> to install into a non-web profile;
+#  pass --no-clean to keep the produced tarball around)
+```
+
+`install:local` does the two-step dance that `dsh plugin add` does NOT do
+for you: it `npm pack`s the repo into `dsh-virtuoso-<version>.tgz`, then
+calls `dsh plugin --profile web add <that tgz>`. Without the pack step
+pnpm sees `./dsh-virtuoso-0.1.0.tgz` as a missing file and aborts with
+`ENOENT` (issue #1).
+
+### C. From this checkout, by hand (equivalent to B, two steps)
+
+```sh
+npm install
+npm run build
+npm pack                                    # produces dsh-virtuoso-0.1.0.tgz
+dsh plugin --profile web add ./dsh-virtuoso-0.1.0.tgz
+```
+
+### D. From a GitHub commit (no local checkout needed)
+
+```sh
+# `dsh plugin add` accepts git+https specifiers directly, but only as a
+# real tarball URL — `github:owner/repo` shorthand depends on the dsh
+# version. Substitute the commit/tag you want:
+DSH_VIRTUOSO_REF="$(git -C /home/user1/git/dsh-virtuoso rev-parse HEAD)"
+dsh plugin --profile web add "https://codeload.github.com/deanyou/dsh-virtuoso/tar.gz/${DSH_VIRTUOSO_REF}"
+```
+
+Whichever path you took:
+
+```sh
+dsh web                      # restart to load the new bundle
+```
+
+…then open **Settings → Virtuoso**.
 
 **Requires dsh web 0.1.0-rc.7 or newer.** On an older host the plugin disables
 its UI entry cleanly rather than rendering against primitives that aren't there:

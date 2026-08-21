@@ -28,6 +28,7 @@
     "build:client": "tsdown && node scripts/normalize-client-banner.mjs",
     "check": "npm run typecheck && npm run build && node scripts/validate-skills.mjs",
     "validate:registry": "node scripts/validate-skills.mjs",
+    "install:local": "node scripts/install-locally.mjs",
     "prepack": "npm run check",
     "prepare": "npm run build"
   },

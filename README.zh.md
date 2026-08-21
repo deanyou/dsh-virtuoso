@@ -18,11 +18,51 @@
 
 ## 安装
 
+下面四种安装路径,任选一种。
+
+### A. 从发布的包(已经在 npm 之后)
+
 ```sh
 dsh plugin --profile web add dsh-virtuoso
 ```
 
-重启 `dsh web`,打开 **Settings → Virtuoso**。
+### B. 从本仓库,用 helper(开发期推荐)
+
+```sh
+npm install
+npm run install:local        # = node scripts/install-locally.mjs
+# 加 --profile <name> 装到非 web profile;加 --no-clean 保留 tarball
+```
+
+`install:local` 把 `dsh plugin add` **不替你做**的两步合上:先 `npm pack`
+产出 `dsh-virtuoso-<version>.tgz`,再 `dsh plugin add` 那个文件。
+少了 pack,pnpm 看到 `./dsh-virtuoso-0.1.0.tgz` 报 ENOENT 直接挂掉 (#1)。
+
+### C. 从本仓库,手动(等价 B,两步走)
+
+```sh
+npm install
+npm run build
+npm pack                                    # 产出 dsh-virtuoso-0.1.0.tgz
+dsh plugin --profile web add ./dsh-virtuoso-0.1.0.tgz
+```
+
+### D. 从 GitHub commit(不需要本地 checkout)
+
+```sh
+# `dsh plugin add` 能直接吃 git+https tarball,但 `github:owner/repo` 这种
+# shorthand 是否可用取决于 dsh 版本。下面给一个稳的写法,引用你想要的 commit/tag:
+DSH_VIRTUOSO_REF="$(git -C /home/user1/git/dsh-virtuoso rev-parse HEAD)"
+dsh plugin --profile web add "https://codeload.github.com/deanyou/dsh-virtuoso/tar.gz/${DSH_VIRTUOSO_REF}"
+```
+
+无论走哪条路:
+
+```sh
+dsh web                      # 重启让新 bundle 生效
+```
+
+…然后打开 **Settings → Virtuoso**。
 
 **需要 dsh web 0.1.0-rc.7+**。在更老的主机上,插件会**静默退出**而不渲染(避免在缺失的 primitives 上爆错):
 如果 **Settings → Virtuoso** 菜单从未出现,通常是因为这个。

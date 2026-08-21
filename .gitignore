@@ -4,6 +4,10 @@ lib/
 client/*.js.map
 *.tsbuildinfo
 npm-cache/
+# Produced by `npm pack` / `install:local`. Kept out of the repo; rebuild
+# locally — committing it would update the shasum on every release and
+# bloat the diff with byte-equivalent artifacts.
+*.tgz
 
 # Test artefacts
 coverage/
